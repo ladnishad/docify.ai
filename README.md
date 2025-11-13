@@ -11,7 +11,9 @@ Docify is a web service that converts JavaScript-heavy documentation sites into 
 - 📝 **Clean Markdown**: Converts HTML to well-structured Markdown with proper formatting
 - 🔒 **Security**: Built-in URL validation to prevent access to private networks
 - 🌐 **Modern React UI**: Beautiful, responsive interface built with React and shadcn/ui
-- ✏️ **Live Markdown Editor**: Edit and preview converted markdown with syntax highlighting
+- 📚 **Site Crawling**: Crawl entire documentation sites with configurable depth and page limits
+- 🤖 **MCP Server**: Model Context Protocol server for AI assistant integration (Claude Desktop, etc.)
+- 👀 **Live Preview**: Beautiful markdown preview with syntax highlighting using react-markdown
 - 🔌 **REST API**: Programmatic access for integration with other tools
 
 ## Quick Start
@@ -66,10 +68,34 @@ The server will start on `http://localhost:3200` by default.
 
 1. Open `http://localhost:3200` in your browser
 2. Paste a documentation URL
-3. Click "Convert to Markdown"
-4. Download the resulting `.md` file
+3. Toggle "Crawl entire site" if you want to crawl multiple pages
+4. Click "Convert to Markdown"
+5. Preview and copy the markdown, or download the `.md` file
+
+### MCP Server (AI Assistant Integration)
+
+Docify includes an MCP server that allows AI assistants like Claude to convert documentation URLs directly within conversations.
+
+**See [MCP_SERVER.md](./MCP_SERVER.md) for detailed setup and usage instructions.**
+
+Quick setup for Claude Desktop:
+1. Build the server: `npm run build:backend`
+2. Add to `claude_desktop_config.json`:
+   ```json
+   {
+     "mcpServers": {
+       "docify": {
+         "command": "node",
+         "args": ["/absolute/path/to/docify.ai/dist/mcp-server.js"]
+       }
+     }
+   }
+   ```
+3. Restart Claude Desktop
 
 ### API
+
+#### Convert Single Page
 
 **Endpoint:** `POST /api/convert`
 
@@ -90,6 +116,38 @@ The server will start on `http://localhost:3200` by default.
     "fetchedAt": "2025-11-13T12:34:56.000Z",
     "source": "playwright",
     "contentLength": 12345
+  }
+}
+```
+
+#### Crawl Entire Site
+
+**Endpoint:** `POST /api/convert/site`
+
+**Request:**
+```json
+{
+  "url": "https://example.com/docs",
+  "maxPages": 50,
+  "maxDepth": 3
+}
+```
+
+**Response:**
+```json
+{
+  "baseUrl": "https://example.com/docs",
+  "pages": [
+    {
+      "url": "https://example.com/docs/page1",
+      "title": "Page 1",
+      "markdown": "..."
+    }
+  ],
+  "metadata": {
+    "fetchedAt": "2025-11-13T12:34:56.000Z",
+    "totalPages": 15,
+    "totalCharacters": 45678
   }
 }
 ```
@@ -132,12 +190,15 @@ docify/
 ├── src/                      # Backend source code
 │   ├── index.ts             # Application entry point
 │   ├── server.ts            # Express server setup
+│   ├── mcp-server.ts        # MCP server for AI assistant integration
 │   ├── routes/
-│   │   └── convert.ts       # API route for conversion
+│   │   ├── convert.ts       # API route for single page conversion
+│   │   └── site.ts          # API route for site crawling
 │   ├── services/
 │   │   ├── browser.ts       # Playwright browser management
 │   │   ├── extract.ts       # Content extraction logic
-│   │   └── markdown.ts      # HTML to Markdown conversion
+│   │   ├── markdown.ts      # HTML to Markdown conversion
+│   │   └── crawler.ts       # Site crawling with BFS
 │   └── types/
 │       └── index.d.ts       # TypeScript type definitions
 ├── frontend/                # React frontend
@@ -151,7 +212,8 @@ docify/
 │   └── tsconfig.json
 ├── package.json             # Root package.json
 ├── tsconfig.json            # Backend TypeScript config
-└── README.md
+├── README.md
+└── MCP_SERVER.md            # MCP server documentation
 ```
 
 ## How It Works
@@ -204,18 +266,17 @@ Docify works best with:
 
 - ⚠️ Cannot access authenticated/login-required pages
 - ⚠️ May not work with sites that heavily block bots
-- ⚠️ Single page conversion only (no crawling)
 - ⚠️ Results depend on site structure consistency
+- ⚠️ Crawling limited to same-domain links only
 
 ## Future Enhancements
 
-- [ ] CLI tool (`docify <url> > output.md`)
-- [ ] Batch URL processing
-- [ ] Full-site documentation crawling
 - [ ] Custom selector configuration
 - [ ] Rate limiting and caching
 - [ ] Docker support
 - [ ] PDF export option
+- [ ] Support for authenticated pages (config-based)
+- [ ] Sitemap.xml parsing for crawling
 
 ## Contributing
 
@@ -229,9 +290,10 @@ MIT
 
 - [Playwright](https://playwright.dev/) - Browser automation
 - [Turndown](https://github.com/mixmark-io/turndown) - HTML to Markdown conversion
+- [Model Context Protocol](https://modelcontextprotocol.io) - AI assistant integration protocol
 - [Express](https://expressjs.com/) - Web framework
 - [React](https://react.dev/) - UI library
 - [shadcn/ui](https://ui.shadcn.com/) - UI component system
 - [Vite](https://vitejs.dev/) - Frontend build tool
 - [Tailwind CSS](https://tailwindcss.com/) - CSS framework
-- [@uiw/react-md-editor](https://github.com/uiwjs/react-md-editor) - Markdown editor component
+- [react-markdown](https://github.com/remarkjs/react-markdown) - Markdown preview component
