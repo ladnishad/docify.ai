@@ -39,14 +39,14 @@ npx playwright install chromium
 For development, you'll need to run both the backend and frontend:
 
 ```bash
-# Terminal 1: Run backend API server (http://localhost:3000)
+# Terminal 1: Run backend API server (http://localhost:3200)
 npm run dev
 
-# Terminal 2: Run frontend dev server with hot reload (http://localhost:5173)
+# Terminal 2: Run frontend dev server with hot reload (http://localhost:5200)
 npm run dev:frontend
 ```
 
-The frontend dev server (port 5173) will proxy API requests to the backend (port 3000).
+The frontend dev server (port 5200) will proxy API requests to the backend (port 3200).
 
 ### Production
 
@@ -58,13 +58,13 @@ npm run build
 npm start
 ```
 
-The server will start on `http://localhost:3000` by default.
+The server will start on `http://localhost:3200` by default.
 
 ## Usage
 
 ### Web UI
 
-1. Open `http://localhost:3000` in your browser
+1. Open `http://localhost:3200` in your browser
 2. Paste a documentation URL
 3. Click "Convert to Markdown"
 4. Download the resulting `.md` file
@@ -105,7 +105,7 @@ The server will start on `http://localhost:3000` by default.
 ### Example with cURL
 
 ```bash
-curl -X POST http://localhost:3000/api/convert \
+curl -X POST http://localhost:3200/api/convert \
   -H "Content-Type: application/json" \
   -d '{"url": "https://react.dev/learn"}'
 ```
@@ -113,7 +113,7 @@ curl -X POST http://localhost:3000/api/convert \
 ### Example with JavaScript
 
 ```javascript
-const response = await fetch('http://localhost:3000/api/convert', {
+const response = await fetch('http://localhost:3200/api/convert', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -176,7 +176,7 @@ Docify includes several security measures:
 
 You can configure the server using environment variables:
 
-- `PORT`: Server port (default: 3000)
+- `PORT`: Server port (default: 3200)
 
 Example:
 ```bash
