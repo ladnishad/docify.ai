@@ -110,6 +110,14 @@ function App() {
         const successData = data as SiteCrawlResponse;
         setCrawlResults(successData);
 
+        // Create combined markdown from all pages
+        const combinedMarkdown = successData.pages
+          .map((page) => `# ${page.title}\n\nSource: ${page.url}\n\n---\n\n${page.markdown}`)
+          .join('\n\n---\n\n');
+
+        setMarkdown(combinedMarkdown);
+        setTitle(`${successData.metadata.totalPages} Pages from ${new URL(successData.baseUrl).hostname}`);
+
         toast({
           title: 'Site Crawled!',
           description: `Found ${successData.metadata.totalPages} pages (${successData.metadata.totalCharacters.toLocaleString()} total characters)`,
@@ -169,32 +177,6 @@ function App() {
     toast({
       title: 'Downloaded',
       description: `Saved as ${filename}`,
-    });
-  };
-
-  const handleDownloadSite = () => {
-    if (!crawlResults) return;
-
-    // Create a combined markdown file with all pages
-    const combinedMarkdown = crawlResults.pages
-      .map((page) => `# ${page.title}\n\nSource: ${page.url}\n\n---\n\n${page.markdown}`)
-      .join('\n\n---\n\n');
-
-    const filename = sanitizeFilename(new URL(crawlResults.baseUrl).hostname) + '-docs.md';
-    const blob = new Blob([combinedMarkdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: 'Downloaded',
-      description: `Saved ${crawlResults.pages.length} pages as ${filename}`,
     });
   };
 
@@ -345,28 +327,15 @@ function App() {
                       </>
                     )}
                   </Button>
-                  {!crawlMode && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleDownload}
-                      disabled={!markdown || isLoading}
-                    >
-                      <FileDown className="mr-2 h-4 w-4" />
-                      Download
-                    </Button>
-                  )}
-                  {crawlMode && crawlResults && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleDownloadSite}
-                      disabled={isLoading}
-                    >
-                      <FileDown className="mr-2 h-4 w-4" />
-                      Download All
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDownload}
+                    disabled={!markdown || isLoading}
+                  >
+                    <FileDown className="mr-2 h-4 w-4" />
+                    {crawlMode && crawlResults ? 'Download All' : 'Download'}
+                  </Button>
                 </div>
               </form>
 
@@ -431,15 +400,15 @@ function App() {
             </Card>
           )}
 
-          {/* Markdown Preview (Single Page) */}
-          {markdown && !crawlMode && (
+          {/* Markdown Preview (Single Page and Site Crawl) */}
+          {markdown && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Markdown Preview</CardTitle>
                     <CardDescription>
-                      {markdown.length.toLocaleString()} characters • Rendered with react-markdown
+                      {markdown.length.toLocaleString()} characters • {crawlResults ? `Combined from ${crawlResults.metadata.totalPages} pages` : 'Rendered with react-markdown'}
                     </CardDescription>
                   </div>
                   <Button
