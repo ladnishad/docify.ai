@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import MDEditor from '@uiw/react-md-editor';
-import { Loader2, FileDown, Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import { Loader2, FileDown, Sparkles, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +37,7 @@ function App() {
   const [markdown, setMarkdown] = useState('');
   const [title, setTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
   const exampleUrls = [
@@ -113,6 +117,27 @@ function App() {
       title: 'Downloaded',
       description: `Saved as ${filename}`,
     });
+  };
+
+  const handleCopyAll = async () => {
+    if (!markdown) return;
+
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopied(true);
+      toast({
+        title: 'Copied!',
+        description: 'Markdown copied to clipboard',
+      });
+
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: 'Copy Failed',
+        description: 'Failed to copy to clipboard',
+        variant: 'destructive',
+      });
+    }
   };
 
   const sanitizeFilename = (name: string): string => {
@@ -206,26 +231,46 @@ function App() {
             </CardContent>
           </Card>
 
-          {/* Markdown Editor Preview */}
+          {/* Markdown Preview */}
           {markdown && (
             <Card>
               <CardHeader>
-                <CardTitle>Markdown Preview</CardTitle>
-                <CardDescription>
-                  {markdown.length.toLocaleString()} characters • Edit and preview your markdown
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Markdown Preview</CardTitle>
+                    <CardDescription>
+                      {markdown.length.toLocaleString()} characters • Rendered with react-markdown
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyAll}
+                    className="gap-2"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy All
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div data-color-mode="light">
-                  <MDEditor
-                    value={markdown}
-                    onChange={(val) => setMarkdown(val || '')}
-                    height={600}
-                    preview="edit"
-                    hideToolbar={false}
-                    enableScroll={true}
-                    visibleDragbar={true}
-                  />
+                <div className="markdown-preview bg-white border rounded-lg p-6 max-h-[800px] overflow-y-auto">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                    className="prose prose-slate max-w-none"
+                  >
+                    {markdown}
+                  </ReactMarkdown>
                 </div>
               </CardContent>
             </Card>
