@@ -6,9 +6,13 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "tsc && cd frontend && npm run build",
+    "build:backend": "tsc",
+    "build:frontend": "cd frontend && npm run build",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "install:frontend": "cd frontend && npm install"
   },
   "keywords": [
     "documentation",

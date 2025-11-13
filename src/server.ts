@@ -16,11 +16,7 @@ export function createApp(): Application {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Serve static files from public directory
-  const publicPath = join(__dirname, '..', 'public');
-  app.use(express.static(publicPath));
-
-  // API routes
+  // API routes (before static files to give them priority)
   app.use('/api', convertRouter);
 
   // Health check endpoint
@@ -28,9 +24,13 @@ export function createApp(): Application {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Root endpoint - serve the UI
-  app.get('/', (req, res) => {
-    res.sendFile(join(publicPath, 'index.html'));
+  // Serve React frontend static files
+  const frontendPath = join(__dirname, '..', 'frontend', 'dist');
+  app.use(express.static(frontendPath));
+
+  // Serve index.html for all other routes (SPA fallback)
+  app.get('*', (req, res) => {
+    res.sendFile(join(frontendPath, 'index.html'));
   });
 
   return app;

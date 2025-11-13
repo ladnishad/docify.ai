@@ -10,7 +10,8 @@ Docify is a web service that converts JavaScript-heavy documentation sites into 
 - 🎯 **Smart Content Extraction**: Intelligently identifies and extracts main documentation content
 - 📝 **Clean Markdown**: Converts HTML to well-structured Markdown with proper formatting
 - 🔒 **Security**: Built-in URL validation to prevent access to private networks
-- 🌐 **Web UI**: Simple interface for converting and downloading documentation
+- 🌐 **Modern React UI**: Beautiful, responsive interface built with React and shadcn/ui
+- ✏️ **Live Markdown Editor**: Edit and preview converted markdown with syntax highlighting
 - 🔌 **REST API**: Programmatic access for integration with other tools
 
 ## Quick Start
@@ -23,8 +24,11 @@ Docify is a web service that converts JavaScript-heavy documentation sites into 
 ### Installation
 
 ```bash
-# Install dependencies
+# Install backend dependencies
 npm install
+
+# Install frontend dependencies
+npm run install:frontend
 
 # Install Playwright browsers
 npx playwright install chromium
@@ -32,10 +36,17 @@ npx playwright install chromium
 
 ### Development
 
+For development, you'll need to run both the backend and frontend:
+
 ```bash
-# Run in development mode with auto-reload
+# Terminal 1: Run backend API server (http://localhost:3000)
 npm run dev
+
+# Terminal 2: Run frontend dev server with hot reload (http://localhost:5173)
+npm run dev:frontend
 ```
+
+The frontend dev server (port 5173) will proxy API requests to the backend (port 3000).
 
 ### Production
 
@@ -118,21 +129,28 @@ console.log(data.markdown);
 
 ```
 docify/
-├── src/
-│   ├── index.ts           # Application entry point
-│   ├── server.ts          # Express server setup
+├── src/                      # Backend source code
+│   ├── index.ts             # Application entry point
+│   ├── server.ts            # Express server setup
 │   ├── routes/
-│   │   └── convert.ts     # API route for conversion
+│   │   └── convert.ts       # API route for conversion
 │   ├── services/
-│   │   ├── browser.ts     # Playwright browser management
-│   │   ├── extract.ts     # Content extraction logic
-│   │   └── markdown.ts    # HTML to Markdown conversion
+│   │   ├── browser.ts       # Playwright browser management
+│   │   ├── extract.ts       # Content extraction logic
+│   │   └── markdown.ts      # HTML to Markdown conversion
 │   └── types/
-│       └── index.d.ts     # TypeScript type definitions
-├── public/
-│   └── index.html         # Web UI
-├── package.json
-├── tsconfig.json
+│       └── index.d.ts       # TypeScript type definitions
+├── frontend/                # React frontend
+│   ├── src/
+│   │   ├── App.tsx          # Main React component
+│   │   ├── main.tsx         # React entry point
+│   │   ├── index.css        # Global styles with Tailwind
+│   │   └── components/ui/   # shadcn/ui components
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tsconfig.json
+├── package.json             # Root package.json
+├── tsconfig.json            # Backend TypeScript config
 └── README.md
 ```
 
@@ -212,3 +230,8 @@ MIT
 - [Playwright](https://playwright.dev/) - Browser automation
 - [Turndown](https://github.com/mixmark-io/turndown) - HTML to Markdown conversion
 - [Express](https://expressjs.com/) - Web framework
+- [React](https://react.dev/) - UI library
+- [shadcn/ui](https://ui.shadcn.com/) - UI component system
+- [Vite](https://vitejs.dev/) - Frontend build tool
+- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
+- [@uiw/react-md-editor](https://github.com/uiwjs/react-md-editor) - Markdown editor component
