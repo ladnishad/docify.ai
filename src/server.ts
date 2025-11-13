@@ -3,6 +3,7 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import convertRouter from './routes/convert.js';
+import siteRouter from './routes/site.js';
 import { closeBrowser } from './services/browser.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,6 +19,7 @@ export function createApp(): Application {
 
   // API routes (before static files to give them priority)
   app.use('/api', convertRouter);
+  app.use('/api/convert', siteRouter);
 
   // Health check endpoint
   app.get('/health', (req, res) => {
@@ -41,7 +43,9 @@ export function startServer(port: number = 3000): void {
 
   const server = app.listen(port, () => {
     console.log(`✨ Docify server running on http://localhost:${port}`);
-    console.log(`📝 API endpoint: http://localhost:${port}/api/convert`);
+    console.log(`📝 API endpoints:`);
+    console.log(`   - Single page: http://localhost:${port}/api/convert`);
+    console.log(`   - Site crawl:  http://localhost:${port}/api/convert/site`);
     console.log(`🌐 Web UI: http://localhost:${port}`);
   });
 

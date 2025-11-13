@@ -3,10 +3,11 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
-import { Loader2, FileDown, Sparkles, Copy, Check } from 'lucide-react';
+import { Loader2, FileDown, Sparkles, Copy, Check, Globe, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Card,
   CardContent,
@@ -27,6 +28,20 @@ interface ConvertResponse {
   };
 }
 
+interface SiteCrawlResponse {
+  baseUrl: string;
+  pages: Array<{
+    url: string;
+    title: string;
+    markdown: string;
+  }>;
+  metadata: {
+    fetchedAt: string;
+    totalPages: number;
+    totalCharacters: number;
+  };
+}
+
 interface ErrorResponse {
   error: string;
   details?: string;
@@ -38,6 +53,10 @@ function App() {
   const [title, setTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [crawlMode, setCrawlMode] = useState(false);
+  const [maxPages, setMaxPages] = useState(10);
+  const [maxDepth, setMaxDepth] = useState(2);
+  const [crawlResults, setCrawlResults] = useState<SiteCrawlResponse | null>(null);
   const { toast } = useToast();
 
   const exampleUrls = [
@@ -62,34 +81,68 @@ function App() {
     setIsLoading(true);
     setMarkdown('');
     setTitle('');
+    setCrawlResults(null);
 
     try {
-      const response = await fetch('/api/convert', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: url.trim() }),
-      });
+      if (crawlMode) {
+        // Site crawl mode
+        const response = await fetch('/api/convert/site', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: url.trim(),
+            options: {
+              maxPages,
+              maxDepth,
+            },
+          }),
+        });
 
-      const data = (await response.json()) as ConvertResponse | ErrorResponse;
+        const data = (await response.json()) as SiteCrawlResponse | ErrorResponse;
 
-      if (!response.ok) {
-        const errorData = data as ErrorResponse;
-        throw new Error(errorData.details || errorData.error || 'Conversion failed');
+        if (!response.ok) {
+          const errorData = data as ErrorResponse;
+          throw new Error(errorData.details || errorData.error || 'Crawl failed');
+        }
+
+        const successData = data as SiteCrawlResponse;
+        setCrawlResults(successData);
+
+        toast({
+          title: 'Site Crawled!',
+          description: `Found ${successData.metadata.totalPages} pages (${successData.metadata.totalCharacters.toLocaleString()} total characters)`,
+        });
+      } else {
+        // Single page mode
+        const response = await fetch('/api/convert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: url.trim() }),
+        });
+
+        const data = (await response.json()) as ConvertResponse | ErrorResponse;
+
+        if (!response.ok) {
+          const errorData = data as ErrorResponse;
+          throw new Error(errorData.details || errorData.error || 'Conversion failed');
+        }
+
+        const successData = data as ConvertResponse;
+        setMarkdown(successData.markdown);
+        setTitle(successData.title);
+
+        toast({
+          title: 'Success!',
+          description: `Converted ${successData.metadata.contentLength.toLocaleString()} characters`,
+        });
       }
-
-      const successData = data as ConvertResponse;
-      setMarkdown(successData.markdown);
-      setTitle(successData.title);
-
-      toast({
-        title: 'Success!',
-        description: `Converted ${successData.metadata.contentLength.toLocaleString()} characters`,
-      });
     } catch (error) {
       toast({
-        title: 'Conversion Failed',
+        title: crawlMode ? 'Crawl Failed' : 'Conversion Failed',
         description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: 'destructive',
       });
@@ -116,6 +169,32 @@ function App() {
     toast({
       title: 'Downloaded',
       description: `Saved as ${filename}`,
+    });
+  };
+
+  const handleDownloadSite = () => {
+    if (!crawlResults) return;
+
+    // Create a combined markdown file with all pages
+    const combinedMarkdown = crawlResults.pages
+      .map((page) => `# ${page.title}\n\nSource: ${page.url}\n\n---\n\n${page.markdown}`)
+      .join('\n\n---\n\n');
+
+    const filename = sanitizeFilename(new URL(crawlResults.baseUrl).hostname) + '-docs.md';
+    const blob = new Blob([combinedMarkdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Downloaded',
+      description: `Saved ${crawlResults.pages.length} pages as ${filename}`,
     });
   };
 
@@ -186,26 +265,108 @@ function App() {
                   />
                 </div>
 
+                {/* Crawl Mode Toggle */}
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <Label htmlFor="crawl-mode" className="text-base font-medium cursor-pointer">
+                        Crawl Entire Site
+                      </Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {crawlMode
+                        ? 'Convert multiple pages from the documentation site'
+                        : 'Convert only the specified page'}
+                    </p>
+                  </div>
+                  <Switch
+                    id="crawl-mode"
+                    checked={crawlMode}
+                    onCheckedChange={setCrawlMode}
+                    disabled={isLoading}
+                  />
+                </div>
+
+                {/* Crawl Options (shown when crawl mode is enabled) */}
+                {crawlMode && (
+                  <div className="p-4 border rounded-lg space-y-4 bg-muted/30">
+                    <h4 className="font-medium text-sm">Crawl Options</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="max-pages" className="text-sm">
+                          Max Pages
+                        </Label>
+                        <Input
+                          id="max-pages"
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={maxPages}
+                          onChange={(e) => setMaxPages(parseInt(e.target.value) || 10)}
+                          disabled={isLoading}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Maximum number of pages to crawl
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="max-depth" className="text-sm">
+                          Max Depth
+                        </Label>
+                        <Input
+                          id="max-depth"
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={maxDepth}
+                          onChange={(e) => setMaxDepth(parseInt(e.target.value) || 2)}
+                          disabled={isLoading}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          How many levels deep to follow links
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <Button type="submit" disabled={isLoading} className="flex-1">
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Converting...
+                        {crawlMode ? 'Crawling Site...' : 'Converting...'}
                       </>
                     ) : (
-                      'Convert to Markdown'
+                      <>
+                        {crawlMode ? <Globe className="mr-2 h-4 w-4" /> : <FileText className="mr-2 h-4 w-4" />}
+                        {crawlMode ? 'Crawl Site' : 'Convert Page'}
+                      </>
                     )}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleDownload}
-                    disabled={!markdown || isLoading}
-                  >
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Download
-                  </Button>
+                  {!crawlMode && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownload}
+                      disabled={!markdown || isLoading}
+                    >
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Download
+                    </Button>
+                  )}
+                  {crawlMode && crawlResults && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownloadSite}
+                      disabled={isLoading}
+                    >
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Download All
+                    </Button>
+                  )}
                 </div>
               </form>
 
@@ -231,8 +392,47 @@ function App() {
             </CardContent>
           </Card>
 
-          {/* Markdown Preview */}
-          {markdown && (
+          {/* Crawl Results (Multiple Pages) */}
+          {crawlResults && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Crawl Results</CardTitle>
+                <CardDescription>
+                  Found {crawlResults.metadata.totalPages} pages • {crawlResults.metadata.totalCharacters.toLocaleString()} total characters
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {crawlResults.pages.map((page, index) => (
+                    <div
+                      key={index}
+                      className="border rounded-lg p-4 space-y-2 hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{page.title}</h4>
+                          <a
+                            href={page.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-muted-foreground hover:text-primary"
+                          >
+                            {page.url}
+                          </a>
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {page.markdown.length.toLocaleString()} chars
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Markdown Preview (Single Page) */}
+          {markdown && !crawlMode && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -277,7 +477,7 @@ function App() {
           )}
 
           {/* Features */}
-          {!markdown && (
+          {!markdown && !crawlResults && (
             <div className="grid md:grid-cols-3 gap-6 pt-8">
               <Card>
                 <CardHeader>
@@ -297,9 +497,9 @@ function App() {
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Clean Markdown</CardTitle>
+                  <CardTitle className="text-lg">Site Crawling</CardTitle>
                   <CardDescription>
-                    Converts to well-structured Markdown with proper formatting
+                    Automatically discover and convert entire documentation sites
                   </CardDescription>
                 </CardHeader>
               </Card>
